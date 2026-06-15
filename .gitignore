@@ -1,0 +1,33 @@
+## Build outputs
+bin/
+obj/
+
+## Publish outputs
+bin/Release/publish*/
+bin/Release/publish-*/
+
+## User-specific files
+*.user
+*.suo
+*.cache
+*.vs/
+
+## IDE
+.vscode/
+.idea/
+*.swp
+
+## OS files
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+## NuGet
+*.nupkg
+packages/
+
+## Logs
+*.log
+
+## Settings (user-specific, not committed)
+# App settings are stored in %APPDATA%/HermesStarter/, not in repo

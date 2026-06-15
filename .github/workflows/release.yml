@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Get version from tag
+        id: version
+        shell: bash
+        run: echo "VERSION=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
+
+      - name: Publish
+        run: |
+          dotnet publish HermesAgentTray.csproj -c Release -r win-x64 --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:EnableCompressionInSingleFile=true `
+            -p:ReadyToRun=false `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -o .\publish\
+        shell: pwsh
+
+      - name: Create package
+        shell: pwsh
+        run: |
+          $tag = "${{ steps.version.outputs.VERSION }}"
+          $zipName = "HermesAgentTray-$tag-win-x64.zip"
+          Compress-Archive -Path ".\publish\HermesAgentTray.exe", ".\README.md" -DestinationPath ".\$zipName" -Force
+          $hash = (Get-FileHash ".\$zipName" -Algorithm SHA256).Hash.ToLower()
+          "$hash  $zipName" | Out-File ".\$zipName.sha256" -Encoding utf8
+          Write-Host "Package: $zipName"
+          Write-Host "SHA256: $hash"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            HermesAgentTray-*.zip
+            HermesAgentTray-*.zip.sha256
+          generate_release_notes: true

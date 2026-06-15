@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <ApplicationIcon>hermes.ico</ApplicationIcon>
+    <RootNamespace>HermesAgentTray</RootNamespace>
+    <AssemblyName>HermesAgentTray</AssemblyName>
+    <Version>1.0.0</Version>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Only include native assets for Windows x64 -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="hermes.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Hardcodet.NotifyIcon.Wpf" Version="1.1.0" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.0" />
+    <PackageReference Include="YamlDotNet" Version="15.1.0" />
+  </ItemGroup>
+
+  <!-- Exclude non-Windows native assets from single-file bundle -->
+  <ItemGroup>
+    <Content Remove="**\linux-*\**" />
+    <Content Remove="**\osx-*\**" />
+    <Content Remove="**\linux-musl-*\**" />
+    <Content Remove="**\freebsd-*\**" />
+    <None Update="**\linux-*\**">
+      <Pack>false</Pack>
+    </None>
+    <None Update="**\osx-*\**">
+      <Pack>false</Pack>
+    </None>
+  </ItemGroup>
+</Project>
