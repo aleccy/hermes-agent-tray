@@ -8,6 +8,7 @@ public class AppSettings
     public string Language { get; set; } = "zh-CN";
     public bool AutoStart { get; set; } = false;
     public bool AutoStartGateways { get; set; } = false;
+    public bool AutoCheckUpdate { get; set; } = true;
 
     /// <summary>
     /// List of profile names whose gateways should auto-start when the app launches.

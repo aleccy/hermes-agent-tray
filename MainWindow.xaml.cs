@@ -60,6 +60,7 @@ public partial class MainWindow : Window
 
         UpdateDesktopDashboardPanel();
         UpdateStatusBar(viewModels);
+        (App.Current as App)?.UpdateTrayToolTip();
     }
 
     private Border CreateProfileCard(ProfileViewModel vm)

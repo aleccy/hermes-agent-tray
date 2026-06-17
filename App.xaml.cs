@@ -19,6 +19,7 @@ public partial class App : Application
     private HermesProcessManager? _processManager;
     private StatusWatcher? _statusWatcher;
     private MainWindow? _mainWindow;
+    private bool _showingMainWindow;
     public static AppSettings Settings { get; private set; } = new();
 
     public static void LogError(string message)
@@ -110,6 +111,34 @@ public partial class App : Application
                     }
                 }
             }
+
+            // Auto-check for updates in background
+            if (Settings.AutoCheckUpdate)
+            {
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await Task.Delay(5000); // Wait 5s after startup
+                        var updateService = new UpdateService();
+                        var release = await updateService.CheckForUpdateAsync();
+                        if (release != null)
+                        {
+                            Dispatcher.Invoke(() =>
+                            {
+                                _notifyIcon?.ShowBalloonTip(
+                                    Loc.UpdateTitle,
+                                    Loc.UpdateAvailable(release.Version),
+                                    BalloonIcon.Info);
+                            });
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        LogError($"Auto-update check failed: {ex.Message}");
+                    }
+                });
+            }
         }
         catch (Exception ex)
         {
@@ -170,25 +199,34 @@ public partial class App : Application
 
     private void ShowMainWindow(bool startMinimized = false)
     {
-        if (_mainWindow == null || !_mainWindow.IsLoaded)
+        if (_showingMainWindow) return;
+        _showingMainWindow = true;
+        try
         {
-            _mainWindow = new MainWindow(_processManager!, _statusWatcher!);
+            if (_mainWindow == null || !_mainWindow.IsLoaded)
+            {
+                _mainWindow = new MainWindow(_processManager!, _statusWatcher!);
+            }
+            if (startMinimized)
+            {
+                _mainWindow.WindowState = WindowState.Minimized;
+                _mainWindow.Show();
+                _mainWindow.Hide();
+            }
+            else
+            {
+                _mainWindow.Show();
+                _mainWindow.WindowState = WindowState.Normal;
+                _mainWindow.Activate();
+            }
         }
-        if (startMinimized)
+        finally
         {
-            _mainWindow.WindowState = WindowState.Minimized;
-            _mainWindow.Show();
-            _mainWindow.Hide();
-        }
-        else
-        {
-            _mainWindow.Show();
-            _mainWindow.WindowState = WindowState.Normal;
-            _mainWindow.Activate();
+            _showingMainWindow = false;
         }
     }
 
-    private void UpdateTrayToolTip()
+    public void UpdateTrayToolTip()
     {
         if (_notifyIcon == null || _processManager == null) return;
         var profiles = ProfileManager.GetAllProfiles();

@@ -75,4 +75,17 @@ public static class Loc
     public static string EnvValue => IsZh ? "值" : "Value";
     public static string AddVar => IsZh ? "+ 添加变量" : "+ Add Variable";
     public static string LoadEnv => IsZh ? "导入 .env" : "Load .env";
+
+    // --- Update ---
+    public static string AutoUpdateLabel => IsZh ? "自动检查更新" : "Auto-check for updates";
+    public static string CheckUpdateBtn => IsZh ? "检查更新" : "Check for Updates";
+    public static string CheckingUpdate => IsZh ? "正在检查更新..." : "Checking for updates...";
+    public static string UpdateAvailable(string version) =>
+        IsZh ? $"发现新版本: {version}" : $"New version available: {version}";
+    public static string UpToDate => IsZh ? "已是最新版本" : "You're up to date";
+    public static string UpdateCheckFailed => IsZh ? "检查更新失败" : "Update check failed";
+    public static string DownloadingUpdate => IsZh ? "正在下载更新..." : "Downloading update...";
+    public static string DownloadFailed => IsZh ? "下载更新失败" : "Download failed";
+    public static string UpdateReadyRestart => IsZh ? "更新已就绪，是否立即重启以完成升级？" : "Update ready. Restart now to complete the upgrade?";
+    public static string UpdateTitle => IsZh ? "自动更新" : "Auto Update";
 }
