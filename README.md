@@ -4,6 +4,12 @@
 
 Built with WPF (.NET 8).
 
+## Why Hermes Agent Tray?
+
+When Hermes Agent starts on Windows, it leaves a **console window** on the screen that cannot be hidden — an eyesore when running at login. Hermes Agent Tray solves this by running the agent entirely in the background with **no visible console window**, while providing a system tray interface for full control.
+
+Additionally, it provides **one-click shortcuts** to launch the Desktop client and Dashboard, eliminating the need to manually open terminals and run commands.
+
 ## Features
 
 - **Multi-Profile Management** — Create, configure, and delete independent Gateway profiles, each with its own `.env` file
