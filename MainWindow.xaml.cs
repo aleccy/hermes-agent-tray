@@ -14,24 +14,33 @@ public partial class MainWindow : Window
 {
     private readonly HermesProcessManager _processManager;
     private readonly StatusWatcher _statusWatcher;
+    private readonly HealthMonitor _healthMonitor;
 
     // Track which profile the Desktop/Dashboard was started with
     private string _desktopProfile = "default";
     private string _dashboardProfile = "default";
 
-    public MainWindow(HermesProcessManager processManager, StatusWatcher statusWatcher)
+    public MainWindow(HermesProcessManager processManager, StatusWatcher statusWatcher, HealthMonitor healthMonitor)
     {
         InitializeComponent();
 
         _processManager = processManager;
         _statusWatcher = statusWatcher;
+        _healthMonitor = healthMonitor;
 
         _statusWatcher.ProfileStatusChanged += OnProfileStatusChanged;
         _processManager.ServiceStopped += OnServiceStopped;
         _processManager.ServiceStarted += OnServiceStarted;
 
         ApplyLocalization();
+        ApplyTheme();
         RefreshProfileList();
+    }
+
+    private void ApplyTheme()
+    {
+        var app = (App.Current as App)!;
+        ThemeService.ApplyTitleBarDarkMode(this, app.IsDarkTheme);
     }
 
     private void ApplyLocalization()
@@ -69,14 +78,14 @@ public partial class MainWindow : Window
 
         var card = new Border
         {
-            Background = Brushes.White,
+            Background = (Brush)FindResource("CardBackground"),
             CornerRadius = new CornerRadius(8),
             Padding = new Thickness(16),
             Margin = new Thickness(0, 0, 0, 10),
             BorderThickness = new Thickness(1),
             BorderBrush = vm.GatewayRunning
-                ? new SolidColorBrush(Color.FromRgb(0x27, 0xAE, 0x60))
-                : new SolidColorBrush(Color.FromRgb(0xE0, 0xE0, 0xE0)),
+                ? (Brush)FindResource("CardRunningBorder")
+                : (Brush)FindResource("CardBorder"),
         };
 
         var dock = new DockPanel();
@@ -84,11 +93,16 @@ public partial class MainWindow : Window
         // Left: status dot + profile name + gateway status
         var leftPanel = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
 
+        var isHealthy = vm.GatewayRunning ? _healthMonitor.IsHealthy(name) : null;
+
         leftPanel.Children.Add(new Ellipse
         {
             Width = 10, Height = 10,
-            Fill = vm.GatewayRunning ? new SolidColorBrush(Color.FromRgb(0x27, 0xAE, 0x60)) :
-                                     new SolidColorBrush(Color.FromRgb(0xBD, 0xC3, 0xC7)),
+            Fill = vm.GatewayRunning
+                ? (isHealthy == false
+                    ? (Brush)FindResource("StatusError")
+                    : (Brush)FindResource("StatusRunning"))
+                : (Brush)FindResource("StatusStopped"),
             Margin = new Thickness(0, 0, 8, 0),
         });
         leftPanel.Children.Add(new TextBlock
@@ -96,16 +110,35 @@ public partial class MainWindow : Window
             Text = name,
             FontWeight = FontWeights.Bold,
             FontSize = 15,
-            Foreground = new SolidColorBrush(Color.FromRgb(0x2C, 0x3E, 0x50)),
+            Foreground = (Brush)FindResource("TextPrimary"),
             Margin = new Thickness(0, 0, 12, 0),
         });
         leftPanel.Children.Add(new TextBlock
         {
-            Text = vm.GatewayStatusText,
+            Text = vm.GatewayStatusText + (vm.GatewayRunning && isHealthy == false ? $" | {Loc.Unhealthy}" : ""),
             FontSize = 11,
-            Foreground = new SolidColorBrush(Color.FromRgb(0x7F, 0x8C, 0x8D)),
+            Foreground = vm.GatewayRunning && isHealthy == false
+                ? (Brush)FindResource("StatusError")
+                : (Brush)FindResource("TextSecondary"),
             VerticalAlignment = VerticalAlignment.Center,
         });
+
+        // Resource usage for running gateway
+        if (vm.GatewayRunning)
+        {
+            var usage = _processManager.GetProcessUsage(name, ServiceType.Gateway);
+            if (usage != null)
+            {
+                leftPanel.Children.Add(new TextBlock
+                {
+                    Text = $"| {Loc.CpuUsage}: {usage.CpuPercent:F1}%  {Loc.MemUsage}: {usage.MemoryMB:F0}MB",
+                    FontSize = 10,
+                    Foreground = (Brush)FindResource("TextMuted"),
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Thickness(8, 0, 0, 0),
+                });
+            }
+        }
 
         DockPanel.SetDock(leftPanel, Dock.Left);
         dock.Children.Add(leftPanel);
@@ -120,8 +153,8 @@ public partial class MainWindow : Window
             IsEnabled = App.Settings.AutoStartGateways,
             FontSize = 11,
             Foreground = App.Settings.AutoStartGateways
-                ? new SolidColorBrush(Color.FromRgb(0x2C, 0x3E, 0x50))
-                : new SolidColorBrush(Color.FromRgb(0xBD, 0xC3, 0xC7)),
+                ? (Brush)FindResource("TextPrimary")
+                : (Brush)FindResource("CheckboxDisabled"),
             Margin = new Thickness(0, 0, 10, 0),
             VerticalAlignment = VerticalAlignment.Center,
             ToolTip = App.Settings.AutoStartGateways
@@ -137,13 +170,13 @@ public partial class MainWindow : Window
 
         rightPanel.Children.Add(MakeBtn(
             vm.GatewayRunning ? Loc.StopGW : Loc.StartGW,
-            vm.GatewayRunning ? "#E74C3C" : "#27AE60",
+            vm.GatewayRunning ? "ButtonStop" : "ButtonStart",
             () => ToggleGateway(name), padding: "8,3"));
 
-        rightPanel.Children.Add(MakeBtn(Loc.Console, "#2C3E50", () => OpenConsole(name), padding: "6,3"));
-        rightPanel.Children.Add(MakeBtn(Loc.Config, "#8E44AD", () => EditProfile(name), padding: "6,3"));
+        rightPanel.Children.Add(MakeBtn(Loc.Console, "ButtonPrimary", () => OpenConsole(name), padding: "6,3"));
+        rightPanel.Children.Add(MakeBtn(Loc.Config, "ButtonConfig", () => EditProfile(name), padding: "6,3"));
         if (vm.CanDelete)
-            rightPanel.Children.Add(MakeBtn(Loc.Delete, "#E74C3C", () => DeleteProfile(name), padding: "6,3"));
+            rightPanel.Children.Add(MakeBtn(Loc.Delete, "ButtonStop", () => DeleteProfile(name), padding: "6,3"));
 
         DockPanel.SetDock(rightPanel, Dock.Right);
         dock.Children.Add(rightPanel);
@@ -180,9 +213,9 @@ public partial class MainWindow : Window
         desktopLeft.Children.Add(new Ellipse
         {
             Width = 10, Height = 10,
-            Fill = desktopRunning ? new SolidColorBrush(Color.FromRgb(0x27, 0xAE, 0x60)) :
-                  desktopStarting ? new SolidColorBrush(Color.FromRgb(0xF3, 0x9C, 0x12)) :
-                                    new SolidColorBrush(Color.FromRgb(0xBD, 0xC3, 0xC7)),
+            Fill = desktopRunning ? (Brush)FindResource("StatusRunning") :
+                  desktopStarting ? (Brush)FindResource("StatusStarting") :
+                                    (Brush)FindResource("StatusStopped"),
             Margin = new Thickness(0, 0, 8, 0),
         });
         desktopLeft.Children.Add(new TextBlock
@@ -190,15 +223,15 @@ public partial class MainWindow : Window
             Text = Loc.DesktopLabel,
             FontWeight = FontWeights.Bold,
             FontSize = 14,
-            Foreground = new SolidColorBrush(Color.FromRgb(0x2C, 0x3E, 0x50)),
+            Foreground = (Brush)FindResource("TextPrimary"),
             Margin = new Thickness(0, 0, 12, 0),
         });
         desktopLeft.Children.Add(new TextBlock
         {
             Text = desktopRunning ? Loc.Running : desktopStarting ? Loc.Starting : Loc.Stopped,
             FontSize = 11,
-            Foreground = desktopStarting ? new SolidColorBrush(Color.FromRgb(0xF3, 0x9C, 0x12)) :
-                        new SolidColorBrush(Color.FromRgb(0x7F, 0x8C, 0x8D)),
+            Foreground = desktopStarting ? (Brush)FindResource("StatusStarting") :
+                        (Brush)FindResource("TextSecondary"),
             VerticalAlignment = VerticalAlignment.Center,
         });
 
@@ -208,12 +241,12 @@ public partial class MainWindow : Window
         var desktopRight = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         var desktopBtn = MakeBtn(
             desktopRunning ? Loc.Stop : Loc.Start,
-            desktopRunning ? "#E74C3C" : "#27AE60",
+            desktopRunning ? "ButtonStop" : "ButtonStart",
             () => ToggleDesktop(_desktopProfile), padding: "8,3");
         if (desktopStarting)
         {
             desktopBtn.IsEnabled = false;
-            desktopBtn.Background = new SolidColorBrush(Color.FromRgb(0xBD, 0xC3, 0xC7));
+            desktopBtn.Background = (Brush)FindResource("CheckboxDisabled");
         }
         desktopRight.Children.Add(desktopBtn);
 
@@ -229,9 +262,9 @@ public partial class MainWindow : Window
         dashLeft.Children.Add(new Ellipse
         {
             Width = 10, Height = 10,
-            Fill = dashboardRunning ? new SolidColorBrush(Color.FromRgb(0x27, 0xAE, 0x60)) :
-                   dashboardStarting ? new SolidColorBrush(Color.FromRgb(0xF3, 0x9C, 0x12)) :
-                                     new SolidColorBrush(Color.FromRgb(0xBD, 0xC3, 0xC7)),
+            Fill = dashboardRunning ? (Brush)FindResource("StatusRunning") :
+                   dashboardStarting ? (Brush)FindResource("StatusStarting") :
+                                     (Brush)FindResource("StatusStopped"),
             Margin = new Thickness(0, 0, 8, 0),
         });
         dashLeft.Children.Add(new TextBlock
@@ -239,7 +272,7 @@ public partial class MainWindow : Window
             Text = Loc.DashboardLabel,
             FontWeight = FontWeights.Bold,
             FontSize = 14,
-            Foreground = new SolidColorBrush(Color.FromRgb(0x2C, 0x3E, 0x50)),
+            Foreground = (Brush)FindResource("TextPrimary"),
             Margin = new Thickness(0, 0, 12, 0),
         });
         dashLeft.Children.Add(new TextBlock
@@ -247,8 +280,8 @@ public partial class MainWindow : Window
             Text = dashboardRunning ? $"http://127.0.0.1:{dashboardPort}" :
                   dashboardStarting ? Loc.Starting : $"{Loc.Stopped} ({Loc.WebUI})",
             FontSize = 11,
-            Foreground = dashboardStarting ? new SolidColorBrush(Color.FromRgb(0xF3, 0x9C, 0x12)) :
-                        new SolidColorBrush(Color.FromRgb(0x7F, 0x8C, 0x8D)),
+            Foreground = dashboardStarting ? (Brush)FindResource("StatusStarting") :
+                        (Brush)FindResource("TextSecondary"),
             VerticalAlignment = VerticalAlignment.Center,
         });
 
@@ -258,17 +291,17 @@ public partial class MainWindow : Window
         var dashRight = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         var dashBtn = MakeBtn(
             dashboardRunning ? Loc.Stop : Loc.Start,
-            dashboardRunning ? "#E74C3C" : "#27AE60",
+            dashboardRunning ? "ButtonStop" : "ButtonStart",
             () => ToggleDashboard(_dashboardProfile), padding: "8,3");
         if (dashboardStarting)
         {
             dashBtn.IsEnabled = false;
-            dashBtn.Background = new SolidColorBrush(Color.FromRgb(0xBD, 0xC3, 0xC7));
+            dashBtn.Background = (Brush)FindResource("CheckboxDisabled");
         }
         dashRight.Children.Add(dashBtn);
 
         if (dashboardRunning)
-            dashRight.Children.Add(MakeBtn(Loc.Open, "#16A085", () => OpenDashboard(_dashboardProfile), padding: "8,3"));
+            dashRight.Children.Add(MakeBtn(Loc.Open, "ButtonStart", () => OpenDashboard(_dashboardProfile), padding: "8,3"));
 
         DockPanel.SetDock(dashRight, Dock.Right);
         dashDock.Children.Add(dashRight);
@@ -276,9 +309,8 @@ public partial class MainWindow : Window
         DesktopDashboardPanel.Children.Add(dashDock);
     }
 
-    private static Button MakeBtn(string text, string bgColor, Action onClick, string padding = "8,3", int fontSize = 11)
+    private static Button MakeBtn(string text, string bgResourceKey, Action onClick, string padding = "8,3", int fontSize = 11)
     {
-        var color = (Color)ColorConverter.ConvertFromString(bgColor);
         var parts = padding.Split(',');
         var pad = parts.Length == 2
             ? new Thickness(double.Parse(parts[0]), double.Parse(parts[1]), double.Parse(parts[0]), double.Parse(parts[1]))
@@ -290,8 +322,8 @@ public partial class MainWindow : Window
             Padding = pad,
             Margin = new Thickness(2, 0, 2, 0),
             FontSize = fontSize,
-            Background = new SolidColorBrush(color),
-            Foreground = Brushes.White,
+            Background = (Brush)Application.Current.FindResource(bgResourceKey),
+            Foreground = (Brush)Application.Current.FindResource("ButtonText"),
             BorderThickness = new Thickness(0),
             Cursor = Cursors.Hand,
         };
@@ -337,6 +369,7 @@ public partial class MainWindow : Window
         if (dialog.ShowDialog() == true)
         {
             Loc.Language = App.Settings.Language;
+            ApplyTheme();
             ApplyLocalization();
             RefreshProfileList();
         }
@@ -362,14 +395,17 @@ public partial class MainWindow : Window
     private async void BtnStartAll_Click(object sender, RoutedEventArgs e)
     {
         var profiles = ProfileManager.GetAllProfiles();
-        foreach (var p in profiles)
-            await _processManager.StartAsync(p.Name, ServiceType.Gateway);
+        await Task.Run(async () =>
+        {
+            foreach (var p in profiles)
+                await _processManager.StartAsync(p.Name, ServiceType.Gateway);
+        });
         RefreshProfileList();
     }
 
     private async void BtnStopAll_Click(object sender, RoutedEventArgs e)
     {
-        await _processManager.StopAllAsync();
+        await Task.Run(() => _processManager.StopAllAsync());
         RefreshProfileList();
     }
 
@@ -385,9 +421,15 @@ public partial class MainWindow : Window
         try
         {
             if (_processManager.IsRunning(name, ServiceType.Gateway))
-                await _processManager.StopAsync(name, ServiceType.Gateway);
+            {
+                RefreshProfileList(); // Show "Stopping..." immediately
+                await Task.Run(() => _processManager.StopAsync(name, ServiceType.Gateway));
+            }
             else
-                await _processManager.StartAsync(name, ServiceType.Gateway);
+            {
+                RefreshProfileList(); // Show "Starting..." immediately
+                await Task.Run(() => _processManager.StartAsync(name, ServiceType.Gateway));
+            }
         }
         catch (Exception ex) { MessageBox.Show(ex.Message, "Gateway Error", MessageBoxButton.OK, MessageBoxImage.Error); }
         RefreshProfileList();
@@ -397,15 +439,14 @@ public partial class MainWindow : Window
     {
         try
         {
-            // Find running desktop regardless of profile
             var runningDesktopProfile = _processManager.GetRunningProfile(ServiceType.Desktop);
             if (runningDesktopProfile != null)
             {
-                await _processManager.StopAsync(runningDesktopProfile, ServiceType.Desktop);
+                await Task.Run(() => _processManager.StopAsync(runningDesktopProfile, ServiceType.Desktop));
             }
             else
             {
-                await _processManager.StartAsync(profileName, ServiceType.Desktop);
+                await Task.Run(() => _processManager.StartAsync(profileName, ServiceType.Desktop));
                 _desktopProfile = profileName;
             }
         }
@@ -422,12 +463,12 @@ public partial class MainWindow : Window
                 var runningProfile = _processManager.GetDashboardRunningProfile();
                 App.LogError($"ToggleDashboard: stopping, runningProfile={runningProfile}");
                 if (runningProfile != null)
-                    await _processManager.StopAsync(runningProfile, ServiceType.Dashboard);
+                    await Task.Run(() => _processManager.StopAsync(runningProfile, ServiceType.Dashboard));
             }
             else
             {
                 App.LogError($"ToggleDashboard: starting with profileName={profileName}");
-                await _processManager.StartAsync(profileName, ServiceType.Dashboard);
+                await Task.Run(() => _processManager.StartAsync(profileName, ServiceType.Dashboard));
                 _dashboardProfile = profileName;
             }
         }

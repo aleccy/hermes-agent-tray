@@ -88,4 +88,20 @@ public static class Loc
     public static string DownloadFailed => IsZh ? "下载更新失败" : "Download failed";
     public static string UpdateReadyRestart => IsZh ? "更新已就绪，是否立即重启以完成升级？" : "Update ready. Restart now to complete the upgrade?";
     public static string UpdateTitle => IsZh ? "自动更新" : "Auto Update";
+
+    // --- Health Monitor ---
+    public static string Unhealthy => IsZh ? "异常" : "Unhealthy";
+    public static string GatewayUnhealthyTitle => IsZh ? "网关异常" : "Gateway Unhealthy";
+    public static string GatewayUnhealthy(string name) =>
+        IsZh ? $"网关 \"{name}\" 健康检查失败，请检查状态" : $"Gateway \"{name}\" health check failed";
+
+    // --- Resource Usage ---
+    public static string CpuUsage => IsZh ? "CPU" : "CPU";
+    public static string MemUsage => IsZh ? "内存" : "Mem";
+
+    // --- Theme ---
+    public static string ThemeLabel => IsZh ? "界面主题" : "Theme";
+    public static string ThemeLight => IsZh ? "浅色" : "Light";
+    public static string ThemeDark => IsZh ? "深色" : "Dark";
+    public static string ThemeSystem => IsZh ? "跟随系统" : "System";
 }

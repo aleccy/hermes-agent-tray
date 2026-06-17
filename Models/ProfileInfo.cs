@@ -34,3 +34,9 @@ public class UsageSummary
     public double EstimatedCostUsd { get; set; }
     public int SessionCount { get; set; }
 }
+
+public class ProcessUsage
+{
+    public double CpuPercent { get; set; }
+    public double MemoryMB { get; set; }
+}

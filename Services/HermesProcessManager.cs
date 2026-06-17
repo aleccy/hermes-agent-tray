@@ -147,6 +147,16 @@ public class HermesProcessManager
             {
                 KillDesktopProcess();
             }
+            else if (type == ServiceType.Gateway)
+            {
+                // Externally started gateway — stop via hermes CLI
+                var state = GetGatewayState(profileName);
+                if (state?.State == "running")
+                {
+                    App.LogError($"Gateway stop: no tracked process for '{profileName}', trying CLI stop");
+                    await StopExternalGatewayAsync(profileName);
+                }
+            }
             return;
         }
 
@@ -262,7 +272,18 @@ public class HermesProcessManager
     public bool IsRunning(string profileName, ServiceType type)
     {
         var key = (profileName, type);
-        return _processes.TryGetValue(key, out var p) && !p.HasExited;
+        if (_processes.TryGetValue(key, out var p) && !p.HasExited)
+            return true;
+
+        // For Gateway: also detect externally started processes via state file
+        if (type == ServiceType.Gateway)
+        {
+            var state = GetGatewayState(profileName);
+            if (state?.State == "running")
+                return true;
+        }
+
+        return false;
     }
 
     public bool IsStarting(string profileName, ServiceType type)
@@ -359,8 +380,79 @@ public class HermesProcessManager
         catch { return null; }
     }
 
+    /// <summary>
+    /// Get CPU and memory usage for a running gateway process.
+    /// Returns null if the process is not running.
+    /// </summary>
+    public ProcessUsage? GetProcessUsage(string profileName, ServiceType type)
+    {
+        var key = (profileName, type);
+        if (!_processes.TryGetValue(key, out var process) || process.HasExited)
+            return null;
+
+        try
+        {
+            process.Refresh();
+            // Memory: WorkingSet64 is the amount of physical memory used
+            var memBytes = process.WorkingSet64;
+            var memMB = memBytes / (1024.0 * 1024.0);
+
+            // CPU: use TotalProcessorTime to compute a simple percentage
+            // Since we can't easily get CPU% in a single snapshot, we use a rough approach
+            var cpuTime = process.TotalProcessorTime;
+            var uptime = DateTime.Now - process.StartTime;
+            var cpuPct = uptime.TotalMilliseconds > 0
+                ? cpuTime.TotalMilliseconds / uptime.TotalMilliseconds * 100.0 / Environment.ProcessorCount
+                : 0;
+
+            return new ProcessUsage
+            {
+                CpuPercent = Math.Min(cpuPct, 100),
+                MemoryMB = memMB,
+            };
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)]
     private static extern int GetShortPathName(string longPath, StringBuilder shortPath, int bufferSize);
+
+    /// <summary>
+    /// Stop an externally started gateway via hermes CLI.
+    /// </summary>
+    private async Task StopExternalGatewayAsync(string profileName)
+    {
+        var profileHome = ProfileManager.GetProfileHome(profileName);
+        var hermesExe = FindHermesExe();
+        var psi = new ProcessStartInfo
+        {
+            FileName = hermesExe,
+            Arguments = profileName == "default" ? "gateway stop" : $"-p {profileName} gateway stop",
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            WorkingDirectory = profileHome,
+        };
+        psi.EnvironmentVariables["HERMES_HOME"] = profileHome;
+
+        try
+        {
+            var proc = Process.Start(psi);
+            if (proc != null)
+            {
+                await proc.WaitForExitAsync();
+                App.LogError($"Stopped external gateway for {profileName}: exit={proc.ExitCode}");
+            }
+        }
+        catch (Exception ex)
+        {
+            App.LogError($"StopExternalGateway failed for {profileName}: {ex.Message}");
+        }
+    }
 
     /// <summary>
     /// Stop any existing gateway process (e.g. started outside HermesAgentTray)

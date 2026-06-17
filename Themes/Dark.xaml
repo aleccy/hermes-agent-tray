@@ -1,0 +1,31 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Dark Theme Colors -->
+    <SolidColorBrush x:Key="WindowBackground" Color="#1E1E2E"/>
+    <SolidColorBrush x:Key="CardBackground" Color="#2D2D44"/>
+    <SolidColorBrush x:Key="CardBorder" Color="#3D3D5C"/>
+    <SolidColorBrush x:Key="PanelBorder" Color="#3D3D5C"/>
+    <SolidColorBrush x:Key="StatusBarBorder" Color="#3D3D5C"/>
+    <SolidColorBrush x:Key="TextPrimary" Color="#CDD6F4"/>
+    <SolidColorBrush x:Key="TextSecondary" Color="#A6ADC8"/>
+    <SolidColorBrush x:Key="TextMuted" Color="#7F849C"/>
+    <SolidColorBrush x:Key="TextHeading" Color="#CDD6F4"/>
+    <SolidColorBrush x:Key="TextSection" Color="#A6ADC8"/>
+    <SolidColorBrush x:Key="StatusRunning" Color="#A6E3A1"/>
+    <SolidColorBrush x:Key="StatusStopped" Color="#585B70"/>
+    <SolidColorBrush x:Key="StatusStarting" Color="#F9E2AF"/>
+    <SolidColorBrush x:Key="StatusError" Color="#F38BA8"/>
+    <SolidColorBrush x:Key="ButtonStart" Color="#A6E3A1"/>
+    <SolidColorBrush x:Key="ButtonStop" Color="#F38BA8"/>
+    <SolidColorBrush x:Key="ButtonPrimary" Color="#89B4FA"/>
+    <SolidColorBrush x:Key="ButtonConfig" Color="#CBA6F7"/>
+    <SolidColorBrush x:Key="ButtonText" Color="#1E1E2E"/>
+    <SolidColorBrush x:Key="CardRunningBorder" Color="#A6E3A1"/>
+    <SolidColorBrush x:Key="CheckboxDisabled" Color="#585B70"/>
+    <SolidColorBrush x:Key="StatusBarBackground" Color="#2D2D44"/>
+    <SolidColorBrush x:Key="StatusBarText" Color="#A6ADC8"/>
+    <SolidColorBrush x:Key="SettingsBackground" Color="#1E1E2E"/>
+    <SolidColorBrush x:Key="SettingsCardBackground" Color="#2D2D44"/>
+    <SolidColorBrush x:Key="SettingsCardBorder" Color="#3D3D5C"/>
+</ResourceDictionary>

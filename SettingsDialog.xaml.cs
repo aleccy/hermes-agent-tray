@@ -18,6 +18,7 @@ public partial class SettingsDialog : Window
         // Apply localization
         LblLanguage.Text = Loc.LanguageLabel;
         LblLanguageRestart.Text = Loc.LanguageRestart;
+        LblTheme.Text = Loc.ThemeLabel;
         ChkAutoStart.Content = Loc.AutoStartLabel;
         ChkAutoStartGateways.Content = Loc.AutoStartGWLabel;
         LblAutoStartGwHint.Text = Loc.IsZh
@@ -35,9 +36,13 @@ public partial class SettingsDialog : Window
 
         // Set current values
         CmbLanguage.SelectedIndex = _settings.Language == "zh-CN" ? 0 : 1;
+        CmbTheme.SelectedIndex = _settings.Theme switch { "Light" => 1, "Dark" => 2, _ => 0 };
         ChkAutoStart.IsChecked = AppSettings.IsAutoStartEnabled();
         ChkAutoStartGateways.IsChecked = _settings.AutoStartGateways;
         ChkAutoUpdate.IsChecked = _settings.AutoCheckUpdate;
+
+        // Apply dark title bar
+        ThemeService.ApplyTitleBarDarkMode(this, ((App)Application.Current).IsDarkTheme);
     }
 
     private async void BtnCheckUpdate_Click(object sender, RoutedEventArgs e)
@@ -125,17 +130,22 @@ public partial class SettingsDialog : Window
     private void BtnSave_Click(object sender, RoutedEventArgs e)
     {
         var selectedLang = ((ComboBoxItem)CmbLanguage.SelectedItem).Tag?.ToString() ?? "zh-CN";
+        var selectedTheme = ((ComboBoxItem)CmbTheme.SelectedItem).Tag?.ToString() ?? "System";
         var autoStart = ChkAutoStart.IsChecked == true;
         var autoStartGw = ChkAutoStartGateways.IsChecked == true;
         var autoCheckUpdate = ChkAutoUpdate.IsChecked == true;
 
         _settings.Language = selectedLang;
+        _settings.Theme = selectedTheme;
         _settings.AutoStart = autoStart;
         _settings.AutoStartGateways = autoStartGw;
         _settings.AutoCheckUpdate = autoCheckUpdate;
         _settings.Save();
 
         AppSettings.SetAutoStart(autoStart);
+
+        // Apply theme immediately
+        ((App)Application.Current).ApplyTheme(selectedTheme);
 
         DialogResult = true;
         Close();

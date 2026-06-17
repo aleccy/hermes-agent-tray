@@ -18,9 +18,13 @@ public partial class App : Application
     private TaskbarIcon? _notifyIcon;
     private HermesProcessManager? _processManager;
     private StatusWatcher? _statusWatcher;
+    private HealthMonitor? _healthMonitor;
     private MainWindow? _mainWindow;
     private bool _showingMainWindow;
     public static AppSettings Settings { get; private set; } = new();
+    private bool _isDarkTheme;
+
+    public bool IsDarkTheme => _isDarkTheme;
 
     public static void LogError(string message)
     {
@@ -65,8 +69,12 @@ public partial class App : Application
             Settings = AppSettings.Load();
             Loc.Language = Settings.Language;
 
+            // Apply theme
+            ApplyTheme(Settings.Theme);
+
             _processManager = new HermesProcessManager();
             _statusWatcher = new StatusWatcher(_processManager);
+            _healthMonitor = new HealthMonitor(_processManager);
 
             // Clean up any conflicting platform tokens inherited from default profile
             try { await ProfileManager.CleanupConflictingTokensAsync(); } catch (Exception ex) { LogError($"CleanupConflictingTokens failed: {ex.Message}"); }
@@ -86,6 +94,22 @@ public partial class App : Application
 
             LogError("Starting status watcher...");
             _statusWatcher.Start(5000);
+
+            _healthMonitor!.GatewayHealthChanged += (profileName, isHealthy) =>
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    if (!isHealthy)
+                    {
+                        _notifyIcon?.ShowBalloonTip(
+                            Loc.GatewayUnhealthyTitle,
+                            Loc.GatewayUnhealthy(profileName),
+                            BalloonIcon.Error);
+                    }
+                    UpdateTrayToolTip();
+                });
+            };
+            _healthMonitor.Start(15000);
 
             LogError("Showing main window...");
             ShowMainWindow(true);
@@ -149,6 +173,32 @@ public partial class App : Application
         }
     }
 
+    public void ApplyTheme(string themeSetting)
+    {
+        var setting = themeSetting switch
+        {
+            "Dark" => AppTheme.Dark,
+            "Light" => AppTheme.Light,
+            _ => AppTheme.System
+        };
+        var effective = ThemeService.ResolveEffectiveTheme(setting);
+        _isDarkTheme = effective == AppTheme.Dark;
+
+        var dict = new ResourceDictionary
+        {
+            Source = new Uri($"pack://application:,,,/Themes/{(_isDarkTheme ? "Dark" : "Light")}.xaml")
+        };
+
+        // Remove old theme, add new
+        var merged = Current.Resources.MergedDictionaries;
+        for (int i = merged.Count - 1; i >= 0; i--)
+        {
+            if (merged[i].Source?.OriginalString?.Contains("/Themes/") == true)
+                merged.RemoveAt(i);
+        }
+        merged.Add(dict);
+    }
+
     private void CreateTrayIcon()
     {
         _notifyIcon = new TaskbarIcon();
@@ -205,7 +255,7 @@ public partial class App : Application
         {
             if (_mainWindow == null || !_mainWindow.IsLoaded)
             {
-                _mainWindow = new MainWindow(_processManager!, _statusWatcher!);
+                _mainWindow = new MainWindow(_processManager!, _statusWatcher!, _healthMonitor!);
             }
             if (startMinimized)
             {
@@ -231,7 +281,11 @@ public partial class App : Application
         if (_notifyIcon == null || _processManager == null) return;
         var profiles = ProfileManager.GetAllProfiles();
         var running = profiles.Count(p => _processManager.IsRunning(p.Name, ServiceType.Gateway));
-        _notifyIcon.ToolTipText = $"Hermes Agent Tray — {running}/{profiles.Count} running";
+        var unhealthy = profiles.Count(p => _healthMonitor?.IsHealthy(p.Name) == false);
+        var tip = unhealthy > 0
+            ? $"Hermes Agent Tray — {running}/{profiles.Count} running, {unhealthy} unhealthy!"
+            : $"Hermes Agent Tray — {running}/{profiles.Count} running";
+        _notifyIcon.ToolTipText = tip;
     }
 
     private void TrayMenu_StartAll(object sender, RoutedEventArgs e)
@@ -265,6 +319,7 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _healthMonitor?.Dispose();
         _statusWatcher?.Dispose();
         _notifyIcon?.Dispose();
         if (_mutexOwned && _mutex != null)

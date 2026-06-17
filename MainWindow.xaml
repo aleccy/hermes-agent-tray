@@ -5,7 +5,7 @@
         Width="720" Height="520"
         MinWidth="600" MinHeight="400"
         WindowStartupLocation="CenterScreen"
-        Background="#F0F2F5"
+        Background="{DynamicResource WindowBackground}"
         StateChanged="Window_StateChanged">
 
     <Grid Margin="12">
@@ -19,19 +19,19 @@
         <!-- Header + Toolbar -->
         <StackPanel Grid.Row="0" Margin="0,0,0,8">
             <DockPanel Margin="0,0,0,8">
-                <TextBlock x:Name="TitleText" FontSize="18" FontWeight="Bold" Foreground="#2C3E50"/>
+                <TextBlock x:Name="TitleText" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
             </DockPanel>
             <StackPanel Orientation="Horizontal">
                 <Button x:Name="BtnNewProfile" Click="BtnAddProfile_Click"
-                        Padding="12,5" Margin="0,0,6,0" Background="#4A90D9" Foreground="White" BorderThickness="0"/>
+                        Padding="12,5" Margin="0,0,6,0" Background="{DynamicResource ButtonPrimary}" Foreground="{DynamicResource ButtonText}" BorderThickness="0"/>
                 <Button x:Name="BtnStartAll" Click="BtnStartAll_Click"
-                        Padding="12,5" Margin="0,0,6,0" Background="#27AE60" Foreground="White" BorderThickness="0"/>
+                        Padding="12,5" Margin="0,0,6,0" Background="{DynamicResource ButtonStart}" Foreground="{DynamicResource ButtonText}" BorderThickness="0"/>
                 <Button x:Name="BtnStopAll" Click="BtnStopAll_Click"
-                        Padding="12,5" Margin="0,0,6,0" Background="#E74C3C" Foreground="White" BorderThickness="0"/>
+                        Padding="12,5" Margin="0,0,6,0" Background="{DynamicResource ButtonStop}" Foreground="{DynamicResource ButtonText}" BorderThickness="0"/>
                 <Button x:Name="BtnRefresh" Click="BtnRefresh_Click"
-                        Padding="12,5" Margin="0,0,6,0" Background="#4A90D9" Foreground="White" BorderThickness="0"/>
+                        Padding="12,5" Margin="0,0,6,0" Background="{DynamicResource ButtonPrimary}" Foreground="{DynamicResource ButtonText}" BorderThickness="0"/>
                 <Button x:Name="BtnSettings" Click="BtnSettings_Click"
-                        Padding="12,5" Background="#8E44AD" Foreground="White" BorderThickness="0"/>
+                        Padding="12,5" Background="{DynamicResource ButtonConfig}" Foreground="{DynamicResource ButtonText}" BorderThickness="0"/>
             </StackPanel>
         </StackPanel>
 
@@ -41,18 +41,18 @@
         </ScrollViewer>
 
         <!-- Desktop & Dashboard Global Panel -->
-        <Border Grid.Row="2" Background="White" CornerRadius="8" Padding="16,12" Margin="0,8,0,0"
-                BorderThickness="1" BorderBrush="#D5D8DC">
+        <Border Grid.Row="2" Background="{DynamicResource CardBackground}" CornerRadius="8" Padding="16,12" Margin="0,8,0,0"
+                BorderThickness="1" BorderBrush="{DynamicResource PanelBorder}">
             <StackPanel>
-                <TextBlock x:Name="DesktopDashboardTitle" FontSize="13" FontWeight="SemiBold" Foreground="#5D6D7E" Margin="0,0,0,8"/>
+                <TextBlock x:Name="DesktopDashboardTitle" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextSection}" Margin="0,0,0,8"/>
                 <StackPanel x:Name="DesktopDashboardPanel"/>
             </StackPanel>
         </Border>
 
         <!-- Status Bar -->
-        <Border Grid.Row="3" Background="White" CornerRadius="4" Padding="10,6" Margin="0,6,0,0"
-                BorderThickness="1" BorderBrush="#DDD">
-            <TextBlock x:Name="StatusBar" FontSize="12" Foreground="#7F8C8D" Text="Ready"/>
+        <Border Grid.Row="3" Background="{DynamicResource StatusBarBackground}" CornerRadius="4" Padding="10,6" Margin="0,6,0,0"
+                BorderThickness="1" BorderBrush="{DynamicResource StatusBarBorder}">
+            <TextBlock x:Name="StatusBar" FontSize="12" Foreground="{DynamicResource StatusBarText}" Text="Ready"/>
         </Border>
     </Grid>
 </Window>
