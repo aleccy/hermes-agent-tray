@@ -5,6 +5,7 @@ using System.Windows.Media.Imaging;
 using Hardcodet.Wpf.TaskbarNotification;
 using HermesAgentTray.Models;
 using HermesAgentTray.Services;
+using Microsoft.Win32;
 
 namespace HermesAgentTray;
 
@@ -91,6 +92,21 @@ public partial class App : Application
             LogError("Creating tray icon in code...");
             CreateTrayIcon();
             LogError("Tray icon created");
+
+            // Handle system shutdown/logoff — stop gateways gracefully
+            SystemEvents.SessionEnding += (s, args) =>
+            {
+                LogError($"SessionEnding: reason={args.Reason}");
+                try
+                {
+                    _processManager.StopAllSync();
+                    LogError("All gateways stopped on session end");
+                }
+                catch (Exception ex)
+                {
+                    LogError($"StopAll on session end failed: {ex.Message}");
+                }
+            };
 
             LogError("Starting status watcher...");
             _statusWatcher.Start(5000);

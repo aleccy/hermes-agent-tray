@@ -269,6 +269,57 @@ public class HermesProcessManager
         await Task.WhenAll(keys.Select(k => StopAsync(k.profile, k.type)));
     }
 
+    /// <summary>
+    /// Synchronous stop-all for use in SessionEnding where async isn't possible.
+    /// Sends stop signals and waits briefly for each gateway.
+    /// </summary>
+    public void StopAllSync()
+    {
+        var keys = _processes.Keys.ToList();
+        foreach (var key in keys)
+        {
+            try
+            {
+                if (!_processes.TryGetValue(key, out var process) || process.HasExited)
+                    continue;
+
+                if (key.type == ServiceType.Gateway)
+                {
+                    WritePlannedStopMarker(key.profile, process.Id);
+                    SignalGatewayStop(key.profile);
+                }
+                else if (key.type == ServiceType.Desktop)
+                {
+                    try { process.Kill(entireProcessTree: true); } catch { }
+                    continue;
+                }
+                else if (key.type == ServiceType.Dashboard)
+                {
+                    try { process.Kill(entireProcessTree: true); } catch { }
+                    continue;
+                }
+
+                // Wait up to 3 seconds for graceful exit
+                process.WaitForExit(3000);
+                if (!process.HasExited)
+                {
+                    try { process.Kill(entireProcessTree: true); } catch { }
+                }
+            }
+            catch (Exception ex)
+            {
+                App.LogError($"StopAllSync failed for {key.profile}/{key.type}: {ex.Message}");
+            }
+        }
+
+        // Clean up stale state files for any profile that had a gateway
+        var profiles = ProfileManager.GetAllProfiles();
+        foreach (var profile in profiles)
+        {
+            CleanGatewayState(profile.Name);
+        }
+    }
+
     public bool IsRunning(string profileName, ServiceType type)
     {
         var key = (profileName, type);
@@ -280,7 +331,15 @@ public class HermesProcessManager
         {
             var state = GetGatewayState(profileName);
             if (state?.State == "running")
-                return true;
+            {
+                // Verify the gateway is actually running by checking the port
+                var port = GetGatewayPortFromEnv(profileName);
+                if (port > 0 && IsPortInUse(port))
+                    return true;
+
+                // Stale state file — gateway not actually running, clean it up
+                CleanGatewayState(profileName);
+            }
         }
 
         return false;
@@ -567,6 +626,36 @@ public class HermesProcessManager
         catch
         {
             return false;
+        }
+    }
+
+    private static int GetGatewayPortFromEnv(string profileName)
+    {
+        var env = ProfileManager.LoadEnv(profileName);
+        if (env.TryGetValue("GATEWAY_PORT", out var portStr) && int.TryParse(portStr, out var p) && p > 0)
+            return p;
+        if (env.TryGetValue("HERMES_GATEWAY_PORT", out var hp) && int.TryParse(hp, out var h) && h > 0)
+            return h;
+        if (env.TryGetValue("PORT", out var pp) && int.TryParse(pp, out var pn) && pn > 0)
+            return pn;
+        return 0;
+    }
+
+    private static void CleanGatewayState(string profileName)
+    {
+        var profileHome = ProfileManager.GetProfileHome(profileName);
+        var stateFile = Path.Combine(profileHome, "gateway_state.json");
+        try
+        {
+            if (File.Exists(stateFile))
+            {
+                File.Delete(stateFile);
+                App.LogError($"Cleaned stale gateway state file for {profileName}");
+            }
+        }
+        catch (Exception ex)
+        {
+            App.LogError($"Failed to clean gateway state for {profileName}: {ex.Message}");
         }
     }
 

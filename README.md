@@ -17,25 +17,32 @@ Additionally, it provides **one-click shortcuts** to launch the Desktop client a
 - **Desktop & Dashboard** — Quick launch for the desktop client and web dashboard
 - **Console** — Open a command-line terminal pre-configured with each profile's environment variables
 - **Auto Start** — Supports Windows auto-start + selective Gateway auto-start per profile
+- **Health Monitoring** — TCP port probe for running gateways, tray notification on failure
+- **Resource Usage** — Real-time CPU and memory display for running gateway processes
+- **Auto Update** — Automatic check for new versions from GitHub Releases, one-click download and install
+- **Dark Mode** — System / Light / Dark theme support
+- **Graceful Shutdown** — Properly stops all gateways on system shutdown/logoff, cleans stale state files
+- **External Gateway Detection** — Detects and manages gateways started outside the tray app
 - **Bilingual UI** — Switch between Chinese and English in settings
 - **System Tray** — Minimize to tray and run in the background
 
 ## UI Preview
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│  Hermes Agent Tray                                                  │
-│  [+ New Profile] [Start All GW] [Stop All] [Refresh] [Settings]    │
-├─────────────────────────────────────────────────────────────────────┤
-│  ● default    Running (PID 1234)  [Auto] [Stop GW] [Console] [Config]        │
-│  ● mytest     Stopped             [Auto] [Start GW] [Console] [Config] [Del]  │
-├─────────────────────────────────────────────────────────────────────┤
-│  Desktop & Dashboard                                                │
-│  ● Desktop    Running                                     [Stop]   │
-│  ● Dashboard  http://127.0.0.1:9119                       [Stop] [Open] │
-├─────────────────────────────────────────────────────────────────────┤
-│  1/2 gateway(s) running                                             │
-└─────────────────────────────────────────────────────────────────────┘
+Hermes Agent Tray
+[+ New Profile] [Start All GW] [Stop All] [Refresh] [Settings]
+
+  ● default    Running (PID 1234)  CPU: 2.3%  Mem: 128MB
+    [Auto] [Stop GW] [Console] [Config]
+
+  ○ mytest     Stopped
+    [Auto] [Start GW] [Console] [Config] [Del]
+
+Desktop & Dashboard
+  ● Desktop    Running                     [Stop]
+  ● Dashboard  http://127.0.0.1:9119       [Stop] [Open]
+
+1/2 gateway(s) running
 ```
 
 ## Build
@@ -99,9 +106,11 @@ Each profile has its own directory structure and `.env` file:
 
 | Option | Description |
 |--------|-------------|
+| Theme | System / Light / Dark |
 | UI Language | Chinese / English (requires restart) |
 | Auto Start on Boot | Register in Windows startup |
 | Auto Start Gateway | Enable to show "Auto" checkbox per profile |
+| Auto Check Update | Check for new versions on startup |
 
 ## Tech Stack
 
